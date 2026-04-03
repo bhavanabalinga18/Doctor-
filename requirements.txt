@@ -1,5 +1,13 @@
-streamlit
-numpy
-plotly
-pydicom
-Pillow
+# Web Framework & Core
+streamlit>=1.31.0
+
+# Numerical & Physics Processing
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Medical Imaging (DICOM Standard)
+pydicom>=2.4.0
+Pillow>=10.2.0
+
+# Scientific Visualization
+plotly>=5.18.0
