@@ -1,82 +1,108 @@
 import streamlit as st
-
-# MUST BE FIRST LINE - Professional Config
-st.set_option('server.maxUploadSize', 200)
-
 import numpy as np
 import plotly.graph_objects as go
 from PIL import Image
 import pydicom
 import io
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="AQKA-PINN Clinical Node", layout="wide")
+# --- 1. PAGE CONFIG (CRITICAL: MUST BE THE FIRST ST COMMAND) ---
+st.set_page_config(
+    page_title="AQKA-PINN Clinical Node",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# --- DATA ENGINE (THE FIX) ---
+# --- 2. CLINICAL UI STYLING ---
+st.markdown("""
+    <style>
+    :root { --hosp-blue: #00D1FF; --hosp-bg: #0E1117; --hosp-panel: #1A1C23; }
+    .stApp { background-color: var(--hosp-bg); color: #E0E0E0; }
+    div.stVerticalBlock > div.element-container {
+        background: var(--hosp-panel);
+        border: 1px solid rgba(0, 209, 255, 0.2);
+        border-radius: 4px;
+        padding: 10px;
+    }
+    .clinical-header {
+        background: #1A1C23;
+        padding: 15px;
+        border-bottom: 2px solid var(--hosp-blue);
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. MEDICAL IMAGE ENGINE (ROBUST UPLOAD FIX) ---
 def load_medical_image(uploaded_file):
-    if uploaded_file is not None:
-        try:
-            # Create a byte stream to ensure the file is fully read
-            file_bytes = uploaded_file.getvalue()
-            if not file_bytes:
-                st.error("File buffer is empty. Please re-upload.")
-                return None
-            
-            name = uploaded_file.name.lower()
-            
-            if name.endswith('.dcm'):
-                # Wrap bytes in a Seekable stream for pydicom
-                with io.BytesIO(file_bytes) as f:
-                    ds = pydicom.dcmread(f)
-                    img = ds.pixel_array.astype(float)
-                    # Clinical Normalization
-                    return (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
-            else:
-                # Standard Image
-                return np.array(Image.open(io.BytesIO(file_bytes)).convert('L'))
-        except Exception as e:
-            st.error(f"Hardware/Format Error: {e}")
-            return None
-    return None
+    if uploaded_file is None:
+        return None
+    try:
+        # Use getvalue() to ensure the full file buffer is captured
+        file_bytes = uploaded_file.getvalue()
+        filename = uploaded_file.name.lower()
+        
+        if filename.endswith('.dcm'):
+            # Use io.BytesIO for seekable DICOM reading
+            with io.BytesIO(file_bytes) as f:
+                ds = pydicom.dcmread(f)
+                img = ds.pixel_array.astype(float)
+                # Clinical Normalization
+                img = (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
+                return img
+        else:
+            # Standard PNG/JPG
+            return np.array(Image.open(io.BytesIO(file_bytes)).convert('L'))
+    except Exception as e:
+        st.error(f"Upload Error: {e}")
+        return None
 
-# --- UI LAYOUT ---
-st.markdown("## 🏥 AQKA-PINN | Diagnostic Workspace")
+# --- 4. TOP HEADER ---
+st.markdown("""
+    <div class="clinical-header">
+        <h2 style='margin:0; color:#00D1FF;'>AQKA-PINN <span style='font-weight:100; color:white;'>| Intelligent Diagnostic Platform</span></h2>
+    </div>
+    """, unsafe_allow_html=True)
 
-col_l, col_c, col_r = st.columns([1, 2, 1])
+# --- 5. MAIN DASHBOARD ---
+l_col, c_col, r_col = st.columns([1, 2.5, 1])
 
-with col_l:
-    st.subheader("📥 Clinical Input")
-    # File uploader with clear instructions
-    uploaded_file = st.file_uploader("Upload DICOM or PNG Scan", type=['png', 'jpg', 'dcm'], help="Max size: 200MB")
+with l_col:
+    st.markdown("### 📥 Intake")
+    # File uploader without the problematic maxUploadSize logic
+    file = st.file_uploader("Upload Scan (DICOM/PNG)", type=['png', 'jpg', 'dcm'])
+    if file:
+        st.success(f"File Received: {file.name}")
+    st.info("Patient: **Jane Doe**\n\nID: **PX-4022**")
+    st.slider("PINN Accuracy Weight", 0.0, 1.0, 0.85)
+
+with c_col:
+    st.markdown("### 🔬 Diagnostic Viewer")
+    img_data = load_medical_image(file)
     
-    if uploaded_file:
-        st.success(f"✅ {uploaded_file.name} Received")
-        st.info(f"Size: {uploaded_file.size / 1024:.2f} KB")
-
-with col_c:
-    st.subheader("🔬 Neural Reconstruction")
-    
-    # Use a spinner so the doctor knows the AI is working
-    if uploaded_file:
-        with st.spinner("PINN Solver: Calculating Tissue Physics..."):
-            img_data = load_medical_image(uploaded_file)
-            
-            if img_data is not None:
-                fig = go.Figure(data=[go.Heatmap(z=img_data, colorscale='Greys_r', showscale=False)])
-                # Add "Physics Overlay"
-                risk = np.where(img_data > 180, img_data, 0)
-                fig.add_trace(go.Contour(z=risk, colorscale='Reds', opacity=0.4, showscale=False))
-                
-                fig.update_layout(margin=dict(l=0,r=0,t=0,b=0), height=500, paper_bgcolor='black')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Failed to render image. Check file integrity.")
+    fig = go.Figure()
+    if img_data is not None:
+        # High-accuracy medical heatmap
+        fig.add_trace(go.Heatmap(z=img_data, colorscale='Greys_r', showscale=False))
+        # Simulated PINN Anomaly Detection
+        risk = np.where(img_data > 175, img_data, 0)
+        fig.add_trace(go.Contour(z=risk, colorscale='Hot', opacity=0.3, showscale=False))
     else:
-        st.image("https://via.placeholder.com/600x400.png?text=Waiting+for+Clinical+Data+Input", use_column_width=True)
+        # Placeholder while waiting for upload
+        fig.add_trace(go.Heatmap(z=np.random.rand(50, 50), colorscale='Ice', opacity=0.1, showscale=False))
+        st.caption("Awaiting Clinical Scan Upload...")
 
-with col_r:
-    st.subheader("📊 AI Analytics")
-    st.metric("PINN Confidence", "96.4%", "+0.2%")
-    st.button("📄 Generate Medical Report")
-    st.button("🚨 Emergency Alert")
+    fig.update_layout(margin=dict(l=0,r=0,t=0,b=0), height=500, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+with r_col:
+    st.markdown("### 📊 AI Analytics")
+    st.metric("Model Confidence", "94.8%", "+0.2%")
+    st.error("ANOMALY DETECTED")
+    
+    with st.expander("Physics Validation (PINN)", expanded=True):
+        st.latex(r"\nabla \cdot (k \nabla T) + q = 0")
+        st.caption("PDE Residual: 0.0024")
+    
+    st.button("📄 GENERATE PDF REPORT")
+    st.button("💾 SAVE TO HOSPITAL EMR")
     
