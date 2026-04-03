@@ -1,14 +1,6 @@
-# Core Web Framework
-streamlit>=1.31.0
-
-# Numerical Processing & Physics Simulation
-numpy>=1.24.0
-scipy>=1.11.0
-
-# Visualizations & Plotting
-plotly>=5.18.0
-
-# Optional: For DICOM/Medical Image Handling
-pydicom>=2.4.0
-Pillow>=10.2.0
-
+streamlit
+pandas
+numpy
+plotly
+pydicom
+Pillow
