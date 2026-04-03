@@ -1,162 +1,171 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
+from PIL import Image
+import io
 
-# --- PAGE CONFIG ---
+# --- SYSTEM CONFIG ---
 st.set_page_config(
-    page_title="AQKA-PINN Platform", 
-    layout="wide", 
+    page_title="AQKA-PINN Clinical Node",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CORRECTED CUSTOM CSS ---
+# --- HOSPITAL GRADE UI (CSS) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Roboto+Mono:wght@300;500&display=swap');
-    
+    /* Professional Dark Mode Palette */
     :root {
-        --glass: rgba(10, 14, 20, 0.9);
-        --cyan: #00F2FF;
-        --border: rgba(0, 242, 255, 0.3);
+        --clinical-blue: #00A3FF;
+        --warning-red: #FF3B30;
+        --bg-solid: #0A0C10;
+        --panel-bg: #141820;
+        --text-main: #E1E1E1;
     }
 
     .stApp {
-        background: radial-gradient(circle at center, #0B1118 0%, #05070A 100%);
-        color: #E0E0E0;
-        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-solid);
+        color: var(--text-main);
     }
 
-    /* Glassmorphism Panels */
+    /* Solid Hospital Panels (No Neon Overkill) */
     div.stVerticalBlock > div {
-        background: var(--glass);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 15px rgba(0, 242, 255, 0.1);
-        margin-bottom: 15px;
+        background: var(--panel-bg);
+        border: 1px solid #252A34;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 12px;
     }
 
-    .status-text {
-        font-family: 'Roboto Mono', monospace;
-        color: var(--cyan);
-        font-size: 0.85rem;
-        letter-spacing: 1px;
+    /* Clinical Typography */
+    h1, h2, h3 {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        letter-spacing: -0.5px;
     }
 
-    [data-testid="stMetricValue"] {
-        color: var(--cyan) !important;
-        font-family: 'Roboto Mono', monospace;
+    .status-bar {
+        background: #1C222D;
+        padding: 10px 20px;
+        border-radius: 4px;
+        border-left: 4px solid var(--clinical-blue);
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
     }
-    
+
+    /* Buttons */
     .stButton>button {
-        width: 100%;
-        background: rgba(0, 242, 255, 0.05);
-        color: var(--cyan);
-        border: 1px solid var(--cyan);
-        transition: 0.3s ease;
+        border-radius: 2px;
         text-transform: uppercase;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        background: var(--cyan);
-        color: #000;
-        box-shadow: 0 0 20px var(--cyan);
+        font-size: 12px;
+        font-weight: 600;
+        height: 45px;
     }
     </style>
-    """, unsafe_allow_html=True) # FIXED PARAMETER
+    """, unsafe_allow_html=True)
 
-# --- HEADER SECTION ---
-col_h1, col_h2, col_h3 = st.columns([2.5, 1, 1])
-with col_h1:
-    st.markdown("<h1 style='margin:0; font-weight:700;'>AQKA-PINN <span style='color:#00F2FF;'>Intelligent Diagnostic Platform</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p class='status-text'>SYSTEM: ACTIVE | ENCRYPTED LINK: SECURE | MODE: CLINICAL AI</p>", unsafe_allow_html=True)
+# --- TOP NAVIGATION / STATUS ---
+st.markdown(f"""
+    <div class="status-bar">
+        <span><b>NODE:</b> ONCOLOGY_DEPT_04</span>
+        <span><b>AI AGENT:</b> AQKA-PINN v3.2.1 (Validated)</span>
+        <span><b>ENCRYPTION:</b> AES-256 ACTIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_h2:
-    st.metric("AI Confidence", "94.2%", "+0.5%")
-with col_h3:
-    st.metric("Processing", "28ms", "-2ms")
+# --- HEADER ---
+c1, c2, c3 = st.columns([3, 1, 1])
+with c1:
+    st.title("AQKA-PINN Diagnostic Platform")
+    st.caption("Physics-Informed Neural Network for Real-Time Tissue Characterization")
 
-st.markdown("<hr style='border: 1px solid rgba(0, 242, 255, 0.2);'>", unsafe_allow_html=True)
+with c2:
+    st.metric("System Accuracy", "99.2%", "0.1%")
+with c3:
+    st.metric("Compute Load", "14%", "Low")
 
-# --- MAIN LAYOUT ---
-left_col, center_col, right_col = st.columns([1, 2, 1])
+# --- MAIN CLINICAL WORKSPACE ---
+col_input, col_view, col_info = st.columns([1, 2.2, 1])
 
-# --- LEFT PANEL: CLINICAL INPUT ---
-with left_col:
-    st.markdown("### 📋 Clinical Input")
-    st.file_uploader("Upload Diagnostic Scan", type=['png', 'jpg', 'jpeg', 'dcm'])
+with col_input:
+    st.markdown("### 📥 Patient Data")
+    uploaded_file = st.file_uploader("Drop Scan (DICOM/PNG)", type=['png', 'jpg', 'dcm'])
     
-    with st.container():
-        st.write("**Patient Metadata**")
-        st.caption("ID: PX-4022 | Age: 62 | Sex: F")
-        st.caption("Type: Contrast Enhanced CT")
+    with st.expander("Patient File: PX-4022", expanded=True):
+        st.write("**Name:** Smith, Jane")
+        st.write("**DOB:** 12-May-1972")
+        st.write("**History:** Non-smoker, Type II Diabetes")
     
-    st.slider("Physics Constraint Weight (PINN)", 0.0, 1.0, 0.75)
-    st.slider("Scanning Resolution", 128, 1024, 512)
-    
-    st.write("**Manual Annotation**")
-    b1, b2 = st.columns(2)
-    b1.button("Highlight")
-    b2.button("Crosshair")
+    st.markdown("---")
+    st.write("**AI Model Parameters**")
+    pinn_weight = st.select_slider("Physics Precision", options=["Standard", "High", "Research"], value="High")
+    st.checkbox("Enable Multi-modal Fusion", value=True)
 
-# --- CENTER PANEL: AI ANALYSIS ---
-with center_col:
-    st.markdown("### 🧠 Neural Core Visualization")
+with col_view:
+    st.markdown("### 🔬 Neural Segmentation Viewer")
     
-    # Generate dummy high-res medical heatmap
-    x = np.linspace(-5, 5, 100)
-    y = np.linspace(-5, 5, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = np.exp(-(X**2 + Y**2)/2) + 0.1 * np.random.normal(size=X.shape)
-    
-    fig = go.Figure(data=[go.Heatmap(
-        z=Z, x=x, y=y,
-        colorscale='IceFire',
-        reversescale=True,
-        showscale=False
-    )])
-    
+    # Logic to show image or placeholder
+    if uploaded_file:
+        img = Image.open(uploaded_file)
+        # Simulate AI Overlay using Plotly
+        img_array = np.array(img.convert('L'))
+        fig = go.Figure()
+        fig.add_trace(go.Heatmap(z=img_array, colorscale='Greys_r', showscale=False))
+        # Add a "Heatmap" contour to look like AI detection
+        fig.add_trace(go.Contour(
+            z=img_array, 
+            contours_coloring='lines', 
+            line_width=2, 
+            colorscale='Hot', 
+            opacity=0.4,
+            showscale=False
+        ))
+    else:
+        # High-res placeholder
+        z = np.random.normal(0, 1, (512, 512)).cumsum(axis=0).cumsum(axis=1)
+        fig = go.Figure(data=[go.Heatmap(z=z, colorscale='Ice', showscale=False)])
+
     fig.update_layout(
         margin=dict(l=0, r=0, t=0, b=0),
-        height=450,
+        height=550,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
     )
-    
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    st.multiselect("Active Layers", ["PINN Gradient", "Vascular Segmentation", "Density Map"], default=["PINN Gradient"])
-
-# --- RIGHT PANEL: CLINICAL INSIGHTS ---
-with right_col:
-    st.markdown("### 📊 Clinical Insights")
-    st.markdown("<div style='padding:10px; border-radius:5px; background:rgba(255, 49, 49, 0.2); border:1px solid #FF3131; color:#FF3131; text-align:center; font-weight:bold;'>CRITICAL ANOMALY DETECTED</div>", unsafe_allow_html=True)
     
-    st.write("")
-    st.markdown("""
-    - **Detection:** Pulmonary Nodule
-    - **Probability:** 91.8%
-    - **Location:** Segment 4 (Upper Lobe)
-    - **Estimated Size:** 12.4mm
+    st.segmented_control("Visualization Mode", options=["Standard", "Thermal (PINN)", "Vascular", "Risk Gradient"], default="Standard")
+
+with col_info:
+    st.markdown("### 📋 AI Findings")
+    st.warning("⚠️ High Probability Abnormality")
+    
+    st.info("""
+    **Primary Diagnosis:**  
+    Malignant Neoplasm (Prob: 94%)
+    
+    **PINN Verification:**  
+    Elasticity mismatch detected in Zone B. Heat flux residual: 0.002.
     """)
     
-    st.progress(0.91, text="Structural Risk Analysis")
-    st.button("Export DICOM Report")
-    st.button("Request Senior Review")
+    st.write("**Quantitative Data:**")
+    st.data_editor({
+        "Metric": ["Volume", "Density", "Sphericity"],
+        "Value": ["4.2 cm³", "1.08 g/mL", "0.88"]
+    }, disabled=True, hide_index=True)
+    
+    st.button("✅ Verify & Save to EMR", use_container_width=True)
+    st.button("📄 Generate PDF Report", use_container_width=True)
 
-# --- BOTTOM PANEL: PHYSICS ---
-st.markdown("<hr style='border: 1px solid rgba(0, 242, 255, 0.1);'>", unsafe_allow_html=True)
-bot_l, bot_r = st.columns([2, 1])
-
-with bot_l:
-    st.markdown("### 🧬 PINN Governing Equations")
-    st.latex(r"L(u) = f(x, t), \quad x \in \Omega, t \in [0, T]")
-    st.latex(r"MSE_{pinn} = MSE_u + MSE_f + MSE_{bc}")
-    st.caption("Minimizing physical residuals through deep neural operators.")
-
-with bot_r:
-    st.markdown("### 📈 Progression Forecast")
-    chart_data = np.random.randn(20, 1).cumsum()
-    st.line_chart(chart_data)
+# --- PHYSICS VALIDATION FOOTER ---
+st.markdown("---")
+f1, f2 = st.columns([2, 1])
+with f1:
+    st.markdown("### 📐 PINN Mathematical Validation")
+    st.latex(r"\mathcal{L}_{total} = \omega_{data} \mathcal{L}_{data} + \omega_{phys} \mathcal{L}_{PDE}")
+    st.caption("The system enforces Navier-Stokes and Bio-heat constraints to ensure physiological plausibility.")
+with f2:
+    st.markdown("### ⏱️ Progression Analysis")
+    st.line_chart(np.random.randn(10, 1), height=150)
     
